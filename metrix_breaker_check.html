@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metrix Breaker Check </title>
+    <style>
+        :root {
+            --bg-primary: #121214;
+            --bg-secondary: #1a1a1e;
+            --bg-surface: #26262b;
+            --text-main: #e4e4e7;
+            --text-muted: #a1a1aa;
+            --accent: #2563eb;
+            --accent-hover: #3b82f6;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            
+            /* LADOT Rule Colors */
+            --r0: #f44336; --r1: #FFA500; --r2: #FFFF00; 
+            --r3: #006400; --r4: #00FFFF; --r5: #FD3DB5;
+            --r6: #7F00FF; --baseline: #FFFFFF;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--bg-primary); color: var(--text-main); padding: 24px; line-height: 1.5; }
+        header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--bg-surface); margin-bottom: 24px; }
+        
+        .logo-area { display: flex; align-items: center; gap: 12px; }
+        .logo-icon { width: 32px; height: 32px; fill: var(--accent); }
+        h1 { font-size: 22px; font-weight: 700; tracking: -0.025em; }
+        .status-badge { background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; border: 1px solid rgba(16, 185, 129, 0.2); }
+
+        .dashboard { display: grid; grid-template-columns: 1fr 320px; gap: 24px; }
+        .main-panel { display: flex; flex-direction: column; gap: 24px; }
+        
+        .upload-card { background: var(--bg-secondary); border: 2px dashed var(--bg-surface); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: border-color 0.2s; }
+        .upload-card:hover { border-color: var(--accent); }
+        .upload-card p { color: var(--text-muted); margin-top: 8px; font-size: 14px; }
+        #fileInput { display: none; }
+
+        .card { background: var(--bg-secondary); border-radius: 12px; padding: 20px; border: 1px solid var(--bg-surface); }
+        .card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+        /* Metrics Graph Display */
+        .analytics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .metric-box { background: var(--bg-surface); padding: 16px; border-radius: 8px; border-left: 4px solid var(--accent); }
+        .metric-box.err { border-left-color: var(--error); }
+        .metric-box.warn { border-left-color: var(--warning); }
+        .metric-box.succ { border-left-color: var(--success); }
+        .metric-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+        .metric-value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+
+        /* Issue Matrix Log */
+        .issue-row { background: var(--bg-surface); border-radius: 8px; padding: 16px; margin-bottom: 12px; border: 1px solid #333; display: flex; flex-direction: column; gap: 8px; }
+        .issue-row.error-border { border-left: 4px solid var(--error); }
+        .issue-row.warning-border { border-left: 4px solid var(--warning); }
+        .issue-header { display: flex; justify-content: space-between; align-items: center; }
+        .block-name { font-weight: 600; font-size: 14px; color: #fff; }
+        .rule-tag { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+        .rule-tag.err { background: rgba(239, 68, 68, 0.15); color: var(--error); }
+        .rule-tag.warn { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        
+        .issue-desc { font-size: 13.5px; color: #d4d4d8; }
+        .solution-box { background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 6px; padding: 12px; font-size: 13px; margin-top: 4px; }
+        .solution-title { font-weight: 600; color: var(--accent-hover); margin-bottom: 2px; text-transform: uppercase; font-size: 11px; }
+
+        /* Sidebar Legend */
+        .color-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--bg-surface); font-size: 13px; }
+        .color-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+
+        .hidden { display: none !important; }
+        #clearBtn { background: var(--bg-surface); border: 1px solid #444; color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        #clearBtn:hover { background: #333; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <svg class="logo-icon" viewBox="0 0 24 24">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+            </svg>
+            <div>
+                <h1>METRIX BREAKER CHECK</h1>
+                <p style="font-size: 12px; color: var(--text-muted);">LADOT Lane-Line SSOT Validation Engine (v2026.06)</p>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="status-badge">June 2026 Authoritative Standard</span>
+            <button id="clearBtn" class="hidden" onclick="resetValidator()">Clear File</button>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        <div class="main-panel">
+            <div class="upload-card" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--text-muted); margin-0: auto;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                <h3 style="margin-top: 12px; font-size: 16px;">Upload Route Configuration KML</h3>
+                <p>Drag & drop or click to browse files</p>
+                <input type="file" id="fileInput" accept=".kml" onchange="handleFile(this.files)">
+            </div>
+
+            <div id="analyticsPanel" class="card hidden">
+                <div class="card-title">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    Parsed Block Level Aggregations
+                </div>
+                <div class="analytics-grid">
+                    <div class="metric-box succ">
+                        <div class="metric-label">Total Blocks</div>
+                        <div class="metric-value" id="mTotal">0</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Valid LineStrings</div>
+                        <div class="metric-value" id="mLines">0</div>
+                    </div>
+                    <div class="metric-box err">
+                        <div class="metric-label">Critical Breakers</div>
+                        <div class="metric-value" id="mErrors">0</div>
+                    </div>
+                    <div class="metric-box warn">
+                        <div class="metric-label">QC Alerts</div>
+                        <div class="metric-value" id="mWarnings">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="resultsPanel" class="card hidden">
+                <div class="card-title" style="color: var(--error);">
+                    Rule Deficiencies and Spatial Discrepancies Matrix
+                </div>
+                <div id="issueContainer"></div>
+            </div>
+            
+            <div id="passedPanel" class="card hidden" style="border-color: var(--success); text-align: center; padding: 40px 20px;">
+                <span style="font-size: 48px;">🎉</span>
+                <h3 style="color: var(--success); margin-top: 12px;">Validation Complete: Zero Breakers Found</h3>
+                <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">KML strictly complies with LADOT rule metrics. Ready for pipelines.avala.ai submission.</p>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="card" style="margin-bottom: 16px;">
+                <div class="card-title">LADOT Color Matrix</div>
+                <div class="color-row"><span><span class="color-dot" style="background:var(--r0)"></span>R0 (Physical Curb)</span><code>#f44336</code></div>
+                <div class="color-row"><span><span class="color-dot" style="background:var(--r1)"></span>R1 (Lane Edge 1)</span><code>#FFA500</code></div>
+                <div class="color-row"><span><span class="color-dot" style="background:var(--r2)"></span>R2 (Lane Edge 2)</span><code>#FFFF00</code></div>
+                <div class="color-row"><span><span class="color-dot" style="background:var(--r3)"></span>R3 (Lane Edge 3)</span><code>#006400</code></div>
+                <div class="color-row"><span><span class="color-dot" style="background:var(--r4)"></span>R4 (Lane Edge 4)</span><code>#00FFFF</code></div>
+                <div class="color-row"><span><span class="color-dot" style="background:var(--r5)"></span>R5 (Lane Edge 5)</span><code>#FD3DB5</code></div>
+                <div class="color-row"><span><span class="color-dot" style="background:var(--baseline)"></span>Baseline Path</span><code>#FFFFFF</code></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Automation Specs</div>
+                <p style="font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+                    Parses KML file nodes sequentially, cross-validating <code>Folder</code> structure matching corporate rule constraints, checking naming strings, mapping duplication tracking for identifiers, and line coordinate patterns.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Setup Drag & Drop Handlers
+        const dropZone = document.getElementById('dropZone');
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--bg-surface)'; }, false);
+        });
+        dropZone.addEventListener('drop', (e) => { handleFile(e.dataTransfer.files); });
+
+        function handleFile(files) {
+            if (!files.length) return;
+            const file = files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) { processKML(e.target.result, file.name); };
+            reader.readAsText(file);
+        }
+
+        function processKML(xmlText, fileName) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+            
+            let totalBlocks = 0;
+            let totalLineStrings = 0;
+            let errorsCount = 0;
+            let warningsCount = 0;
+            let outputHTML = "";
+
+            // Target top-level block structures
+            const folders = xmlDoc.getElementsByTagName("Folder");
+            
+            // If empty file root check
+            if (folders.length === 0) {
+                logIssue("Root Document", "CRITICAL METRIC BREAK", "No structural KML folders detected. Empty mainline folders must be skipped entirely.", "Verify the config source metadata before authoring. Do not supply empty structural shells.", "err");
+                errorsCount++;
+            }
+
+            for (let i = 0; i < folders.length; i++) {
+                const folder = folders[i];
+                const folderNameNode = folder.getElementsByTagName("name")[0];
+                const folderName = folderNameNode ? folderNameNode.textContent.trim() : "Unnamed Folder";
+
+                // Filter execution to treat folders containing sub-structures as blocks
+                if (folder.getElementsByTagName("Folder").length > 0 || folderName.includes("|") || folderName.includes("@")) {
+                    totalBlocks++;
+                    
+                    let hasBaseline = false;
+                    let baselineIsDot = false;
+                    let laneLinesFolder = null;
+                    let enforceZonesFolder = null;
+                    let rIdentifiers = [];
+
+                    // Scan child components
+                    const childFolders = folder.children;
+                    const placemarks = folder.getElementsByTagName("Placemark");
+                    
+                    totalLineStrings += folder.getElementsByTagName("LineString").length;
+
+                    // 1. Evaluate Direct Structural Subfolders
+                    for(let j=0; j<childFolders.length; j++) {
+                        if(childFolders[j].tagName === "Folder") {
+                            const subName = childFolders[j].getElementsByTagName("name")[0]?.textContent.trim();
+                            if (subName === "LaneLines") laneLinesFolder = childFolders[j];
+                            if (subName === "EnforceZones") enforceZonesFolder = childFolders[j];
+                        }
+                    }
+
+                    // 2. Structural Error Scans
+                    if (!laneLinesFolder) {
+                        outputHTML += logIssue(folderName, "Folder Structure Metric Breaker", "Sub-folder naming variant mismatch or folder completely missing. Rule requires exact 'LaneLines' naming schema.", "Rename inner layer exactly to 'LaneLines'. Never place lane boundaries loose in root block folder.", "err");
+                        errorsCount++;
+                    }
+                    if (!enforceZonesFolder) {
+                        outputHTML += logIssue(folderName, "Folder Structure Metric Breaker", "Sub-folder naming variant mismatch or missing. Rule requires exact 'EnforceZones' schema.", "Ensure an 'EnforceZones' sub-folder exists within the block tier.", "err");
+                        errorsCount++;
+                    }
+
+                    // 3. Baseline Validation Engine
+                    for (let k = 0; k < placemarks.length; k++) {
+                        const pName = placemarks[k].getElementsByTagName("name")[0]?.textContent.trim() || "";
+                        
+                        if (pName.startsWith("#") || placemarks[k].parentNode === folder) {
+                            hasBaseline = true;
+                            const points = placemarks[k].getElementsByTagName("Point");
+                            const lineStrings = placemarks[k].getElementsByTagName("LineString");
+                            if (points.length > 0 && lineStrings.length === 0) {
+                                baselineIsDot = true;
+                            }
+                        }
+
+                        // Collect line identifiers inside LaneLines for sequence checks
+                        if (laneLinesFolder && placemarks[k].parentNode === laneLinesFolder) {
+                            rIdentifiers.push(pName.toUpperCase());
+                        }
+                    }
+
+                    if (!hasBaseline) {
+                        outputHTML += logIssue(folderName, "Rule 4.1: Missing Baseline Path", "No baseline placemark located directly under the block tracking directory folder.", "Draw exactly one baseline White (#FFFFFF) path inside the offset/transit lane.", "err");
+                        errorsCount++;
+                    } else if (baselineIsDot) {
+                        outputHTML += logIssue(folderName, "Rule 4.2: Baseline Geometric Node Mismatch", "The identified baseline structural element is rendered as a single point/dot.", "Re-draw baseline path as an active LineString object tracking with true distance length.", "err");
+                        errorsCount++;
+                    }
+
+                    // 4. Sequential Continuity Scan (R0, R1, R2...)
+                    if (rIdentifiers.length > 0) {
+                        const hasR0 = rIdentifiers.includes("R0");
+                        const duplicatesR0 = rIdentifiers.filter(x => x === "R0").length;
+
+                        if (!hasR0) {
+                            outputHTML += logIssue(folderName, "Rule 2.1: Missing Root R0 Anchor", "The structural sequence lacks an R0 line boundary descriptor asset entirely.", "Establish R0 immediately against the physical concrete curb edge to anchor the remaining schema.", "err");
+                            errorsCount++;
+                        } else if (duplicatesR0 > 1) {
+                            outputHTML += logIssue(folderName, "Rule 2.1: Duplicate R0 Identification Found", `Detected (${duplicatesR0}) duplicate R0 layers within the block folder structure.`, "Ensure exactly ONE unique R0 follows the curb. Outward boundaries must clear incrementally to RN.", "err");
+                            errorsCount++;
+                        }
+
+                        // Check for contiguous sequence breaks (e.g. R0 then R2 with no R1)
+                        let numSequence = rIdentifiers
+                            .map(x => parseInt(x.replace("R", "")))
+                            .filter(x => !isNaN(x))
+                            .sort((a,b)=>a-b);
+                        
+                        for(let s=0; s<numSequence.length; s++) {
+                            if(numSequence[s] !== s) {
+                                outputHTML += logIssue(folderName, "Rule 2.1: Sequence Gap Interception", `Gap detected in contiguous labeling array pattern. Found index array path sequence: R${numSequence.join(', R')}`, "Reorder numbering properties outward sequentially starting away from the curb. Remove any indexing jumps.", "warn");
+                                warningsCount++;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update Graphical Analytics Panel Metrics
+            document.getElementById('mTotal').textContent = totalBlocks;
+            document.getElementById('mLines').textContent = totalLineStrings;
+            document.getElementById('mErrors').textContent = errorsCount;
+            document.getElementById('mWarnings').textContent = warningsCount;
+
+            // Interface Toggling
+            document.getElementById('dropZone').classList.add('hidden');
+            document.getElementById('clearBtn').classList.remove('hidden');
+            document.getElementById('analyticsPanel').classList.remove('hidden');
+
+            if (errorsCount === 0 && warningsCount === 0) {
+                document.getElementById('passedPanel').classList.remove('hidden');
+            } else {
+                document.getElementById('issueContainer').innerHTML = outputHTML;
+                document.getElementById('resultsPanel').classList.remove('hidden');
+            }
+        }
+
+        function logIssue(block, ruleName, description, solution, severity) {
+            return `
+                <div class="issue-row ${severity === 'err' ? 'error-border' : 'warning-border'}">
+                    <div class="issue-header">
+                        <span class="block-name">${block}</span>
+                        <span class="rule-tag ${severity === 'err' ? 'err' : 'warn'}">${ruleName}</span>
+                    </div>
+                    <div class="issue-desc">${description}</div>
+                    <div class="solution-box">
+                        <div class="solution-title">Geometric Correction Action</div>
+                        ${solution}
+                    </div>
+                </div>
+            `;
+        }
+
+        function resetValidator() {
+            document.getElementById('fileInput').value = "";
+            document.getElementById('dropZone').classList.remove('hidden');
+            document.getElementById('clearBtn').classList.add('hidden');
+            document.getElementById('analyticsPanel').classList.add('hidden');
+            document.getElementById('resultsPanel').classList.add('hidden');
+            document.getElementById('passedPanel').classList.add('hidden');
+            document.getElementById('issueContainer').innerHTML = "";
+        }
+    </script>
+</body>
+</html>
