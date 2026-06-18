@@ -16,6 +16,7 @@
             --accent-success: #10b981;
             --accent-error: #ef4444;
             --accent-warning: #f59e0b;
+            --accent-info: #06b6d4;
         }
 
         body {
@@ -116,6 +117,13 @@
             font-size: 11px;
         }
 
+        .action-button-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
         .btn-analyze {
             background: var(--accent-primary);
             color: white;
@@ -124,13 +132,40 @@
             border-radius: 4px;
             font-weight: 600;
             cursor: pointer;
-            margin-top: 10px;
             font-size: 12px;
-            width: 100%;
             transition: background 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .btn-analyze:hover { background: #2563eb; }
+
+        .btn-download {
+            background: var(--accent-success);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .btn-download.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .btn-download.active:hover { background: #059669; }
 
         .metric-container {
             display: grid;
@@ -216,6 +251,36 @@
 
         .status-fail { background: #7f1d1d; color: #fca5a5; }
         .status-pass { background: #064e3b; color: #6ee7b7; }
+
+        /* Guide Panel Styles */
+        .guide-box {
+            background: #111e30;
+            border: 1px solid #1e3a8a;
+            border-radius: 6px;
+            padding: 14px;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+        .guide-box title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            color: var(--accent-info);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        .guide-steps {
+            margin: 0;
+            padding-left: 20px;
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+        .guide-steps li strong {
+            color: #e2e8f0;
+        }
     </style>
 </head>
 <body>
@@ -245,7 +310,15 @@
 
             <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Or Paste Raw KML text block below:</div>
             <textarea id="rawKmlInput" class="raw-text-area" placeholder="Paste KML script markup here... <xml>..."></textarea>
-            <button class="btn-analyze" onclick="processRawText()">Analyze Transmitted Data</button>
+            
+            <div class="action-button-container">
+                <button class="btn-analyze" onclick="processRawText()">
+                    <i data-lucide="play" style="width:14px; height:14px;"></i> Analyze Transmitted Data
+                </button>
+                <button id="downloadKmlBtn" class="btn-download" onclick="downloadGeneratedKML()">
+                    <i data-lucide="download" style="width:14px; height:14px;"></i> Download Validated KML
+                </button>
+            </div>
 
             <div class="metric-container">
                 <div class="metric-box">
@@ -260,6 +333,15 @@
                     <div id="m-score" class="value" style="color: var(--accent-success)">—</div>
                     <div class="label">Accuracy Index</div>
                 </div>
+            </div>
+
+            <div class="guide-box">
+                <title><i data-lucide="folder-tree" style="width:14px; height:14px;"></i> Structural Resolution Guide: Misarranged Folders</title>
+                <ol class="guide-steps">
+                    <li><strong>Identify structural breaks:</strong> Look down at the <em>Automated Rule Discrepancy Map</em> below to extract the exact Parent Context Path reporting a structure fail.</li>
+                    <li><strong>Isolate mispositioned nodes:</strong> Open the KML hierarchy inside your engineering editor. Ensure the <code>&lt;Placemark&gt;</code> containing your baseline vector path is extracted out of any sub-containers and situated cleanly as a direct descendant of the main block <code>&lt;Folder&gt;</code>.</li>
+                    <li><strong>Re-align Sub-directories:</strong> Group all corresponding lane markings inside an explicitly defined child folder named exactly <code>LaneLines</code>, and place all compliance segments directly inside an <code>EnforceZones</code> child folder.</li>
+                </ol>
             </div>
         </div>
 
@@ -293,6 +375,7 @@
     <script>
         lucide.createIcons();
         let qaChart;
+        let currentXmlDoc = null; // Storing active document reference for downstream processing / exports
 
         function initChart(numbering = 0, formatting = 0, alignment = 0, baseline = 0) {
             const ctx = document.getElementById('metricsChart').getContext('2d');
@@ -338,18 +421,19 @@
 
         function analyzeKML(xmlText) {
             const parser = new DOMParser();
-            let xmlDoc;
             try {
-                xmlDoc = parser.parseFromString(xmlText, "text/xml");
-                if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+                currentXmlDoc = parser.parseFromString(xmlText, "text/xml");
+                if (currentXmlDoc.getElementsByTagName("parsererror").length > 0) {
                     throw new Error("Invalid XML/KML Structure detected.");
                 }
             } catch(e) {
                 alert("KML Syntax Error: Could not read string structure.");
+                currentXmlDoc = null;
+                document.getElementById('downloadKmlBtn').classList.remove('active');
                 return;
             }
             
-            const folders = xmlDoc.getElementsByTagName("Folder");
+            const folders = currentXmlDoc.getElementsByTagName("Folder");
             let totalFolders = folders.length;
             let errors = [];
             
@@ -369,7 +453,7 @@
                     let laneLinesFolder = null;
                     let enforceZonesFolder = null;
                     let baselineCount = 0;
-                    let rNamesList = [];
+                    let lNamesList = [];
 
                     // Evaluate immediate structural components (Rule 5.0)
                     for(let sf=0; sf<subFolders.length; sf++) {
@@ -403,7 +487,7 @@
                                     block: folderName,
                                     type: "Rule 5.0 Baseline Misplacement",
                                     rule: `Baseline "${pmName}" located inside a sub-folder matrix.`,
-                                    solution: "Move baseline placemark to be a direct child of the top-level block folder."
+                                    solution: "Move baseline placemark to be a direct child of the top-level block folder using structural resolution metrics."
                                 });
                             }
 
@@ -419,18 +503,21 @@
                             }
                         }
 
-                        // Collect structural R-Lanes
-                        if (pmName.match(/^R[0-9]$/)) {
-                            rNamesList.push({ name: pmName, pmNode: pm });
+                        // Collect structural L-Lanes (Rule migration from R to L)
+                        if (pmName.match(/^L[0-9]$/)) {
+                            lNamesList.push({ name: pmName, pmNode: pm });
                             
-                            if (pm.parentNode !== laneLinesFolder) {
-                                counts.formatting++;
-                                errors.push({
-                                    block: folderName,
-                                    type: "Rule 5.0 Component Displacement",
-                                    rule: `Lane line "${pmName}" sitting loose or in an unapproved block sub-directory.`,
-                                    solution: `Move lane line placemark inside the dedicated nested "LaneLines" directory container.`
-                                });
+                            if (folder.getElementsByTagName("name")[0]?.textContent?.trim() === folderName && pm.parentNode !== laneLinesFolder) {
+                                // Double check placement constraints relative to targeted container
+                                if(pm.parentNode && pm.parentNode.getElementsByTagName("name")[0]?.textContent?.trim() !== "LaneLines") {
+                                    counts.formatting++;
+                                    errors.push({
+                                        block: folderName,
+                                        type: "Rule 5.0 Component Displacement",
+                                        rule: `Lane line "${pmName}" sitting loose or in an unapproved block sub-directory.`,
+                                        solution: `Move lane line placemark inside the dedicated nested "LaneLines" directory container.`
+                                    });
+                                }
                             }
                         }
                     }
@@ -453,41 +540,41 @@
                         });
                     }
 
-                    // Rule 2.1 Compressed Lane Sequencing Implementation
-                    if (rNamesList.length > 0) {
-                        let rCountsMap = {};
-                        let rIndexes = [];
+                    // Rule 2.1 Compressed Lane Sequencing Implementation (Migrated to L-Lane Rules)
+                    if (lNamesList.length > 0) {
+                        let lCountsMap = {};
+                        let lIndexes = [];
                         let laneFolderErrors = [];
                         let laneFolderSolutions = [];
                         
-                        rNamesList.forEach(item => {
-                            rCountsMap[item.name] = (rCountsMap[item.name] || 0) + 1;
-                            const idx = parseInt(item.name.replace('R', ''), 10);
-                            if(!rIndexes.includes(idx)) rIndexes.push(idx);
+                        lNamesList.forEach(item => {
+                            lCountsMap[item.name] = (lCountsMap[item.name] || 0) + 1;
+                            const idx = parseInt(item.name.replace('L', ''), 10);
+                            if(!lIndexes.includes(idx)) lIndexes.push(idx);
                         });
 
-                        rIndexes.sort((a,b) => a-b);
+                        lIndexes.sort((a,b) => a-b);
 
                         // 1. Identify duplicate sequences
-                        for (const rKey in rCountsMap) {
-                            if (rCountsMap[rKey] > 1) {
+                        for (const lKey in lCountsMap) {
+                            if (lCountsMap[lKey] > 1) {
                                 counts.numbering++;
-                                laneFolderErrors.push(`Duplicate descriptor configurations for "${rKey}" (Detected Count: ${rCountsMap[rKey]})`);
+                                laneFolderErrors.push(`Duplicate descriptor configurations for "${lKey}" (Detected Count: ${lCountsMap[lKey]})`);
                                 laneFolderSolutions.push(`Adjust sequencing outwards from inside curb layout rules.`);
                             }
                         }
 
                         // 2. Identify layout limit exceptions
-                        if (rCountsMap['R0'] > 1) {
+                        if (lCountsMap['L0'] > 1) {
                             counts.numbering++;
-                            laneFolderErrors.push("Outermost boundary lane vector mistakenly tagged as R0 inside layer.");
+                            laneFolderErrors.push("Outermost boundary lane vector mistakenly tagged as L0 inside layer.");
                             laneFolderSolutions.push("Remap configuration indices to match highest target outer integers.");
                         }
 
                         // 3. Identify gaps
-                        if (rIndexes.length > 0 && (rIndexes[rIndexes.length - 1] !== rIndexes.length - 1 || rIndexes[0] !== 0)) {
+                        if (lIndexes.length > 0 && (lIndexes[lIndexes.length - 1] !== lIndexes.length - 1 || lIndexes[0] !== 0)) {
                             counts.numbering++;
-                            laneFolderErrors.push(`Sequence gaps found within continuous indices list: [R${rIndexes.join(', R')}].`);
+                            laneFolderErrors.push(`Sequence gaps found within continuous indices list: [L${lIndexes.join(', L')}].`);
                             laneFolderSolutions.push("Re-index items seamlessly from the starting boundary line framework.");
                         }
 
@@ -520,6 +607,9 @@
             const logContainer = document.getElementById('errorLog');
             logContainer.innerHTML = "";
 
+            // Toggle active status for KML download availability link
+            document.getElementById('downloadKmlBtn').classList.add('active');
+
             if (errorCount === 0) {
                 logContainer.innerHTML = `
                     <div style="text-align: center; color: var(--accent-success); padding: 40px 0;">
@@ -545,6 +635,23 @@
                 logContainer.appendChild(item);
             });
             lucide.createIcons();
+        }
+
+        // Functional download framework generation layer
+        function downloadGeneratedKML() {
+            if (!currentXmlDoc) return alert("No parsed or generated KML stream available. Please execute an analysis first.");
+            
+            const serializer = new XMLSerializer();
+            const xmlString = serializer.serializeToString(currentXmlDoc);
+            
+            const blob = new Blob([xmlString], { type: "application/vnd.google-earth.kml+xml;charset=utf-8" });
+            const link = document.createElement("a");
+            
+            link.href = URL.createObjectURL(blob);
+            link.download = "LADOT_Validated_RouteConfig.kml";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
