@@ -461,10 +461,12 @@
                         });
                     }
 
-                    // Rule 2.1 Complex Lane Sequencing Audit
+                    // Rule 2.1 Complex Lane Sequencing Audit - Compressed into one high-level lane folder error report
                     if (rNamesList.length > 0) {
                         let rCountsMap = {};
                         let rIndexes = [];
+                        let laneFolderErrors = [];
+                        let laneFolderSolutions = [];
                         
                         rNamesList.forEach(item => {
                             rCountsMap[item.name] = (rCountsMap[item.name] || 0) + 1;
@@ -478,34 +480,32 @@
                         for (const rKey in rCountsMap) {
                             if (rCountsMap[rKey] > 1) {
                                 counts.numbering++;
-                                errors.push({
-                                    block: folderName,
-                                    type: "Rule 2.1 Label Duplication",
-                                    rule: `Duplicate instance count discovered for designation "${rKey}" (Count: ${rCountsMap[rKey]})`,
-                                    solution: "Adjust labeling parameters sequentially outward away from curb layer line entry (R0, R1, R2, R3...)."
-                                });
+                                laneFolderErrors.push(`Duplicate configuration for lane descriptor "${rKey}" (Count: ${rCountsMap[rKey]})`);
+                                laneFolderSolutions.push(`Adjust sequence sequentially outward away from curb layout boundary layer lines.`);
                             }
                         }
 
                         // Check highest index anomaly (Outermost = Highest Number)
                         if (rCountsMap['R0'] > 1) {
                             counts.numbering++;
-                            errors.push({
-                                block: folderName,
-                                type: "Rule 2.1 Boundary Configuration Error",
-                                rule: "Outermost lane limit boundary vector mislabeled as an inside curb element (R0).",
-                                solution: "Audit vector sequencing; update properties token properties string values to map to highest count layout integer."
-                            });
+                            laneFolderErrors.push("Outermost lane limit boundary vector mislabeled as an inside curb element (R0).");
+                            laneFolderSolutions.push("Update properties token string values to map to the highest layout index integer.");
                         }
 
                         // Check sequence gaps (Contiguous requirement)
                         if (rIndexes.length > 0 && (rIndexes[rIndexes.length - 1] !== rIndexes.length - 1 || rIndexes[0] !== 0)) {
                             counts.numbering++;
+                            laneFolderErrors.push(`Gaps or missing indices detected in outward lane count sequence: [R${rIndexes.join(', R')}].`);
+                            laneFolderSolutions.push("Re-index paths sequentially starting from zero index curb edge bounds.");
+                        }
+
+                        // If any Rule 2.1 problems occurred, compress them into one highlighted lane report
+                        if (laneFolderErrors.length > 0) {
                             errors.push({
                                 block: folderName,
-                                type: "Rule 2.1 Index Continuity Break",
-                                rule: `Gaps or missing indices detected in outward lane count layout chain: [R${rIndexes.join(', R')}].`,
-                                solution: "Re-index path metadata structures sequentially starting from curb edge zero index baseline bounds upwards."
+                                type: "Rule 2.1 Label Sequencing Malfunction",
+                                rule: laneFolderErrors.join(" | "),
+                                solution: [...new Set(laneFolderSolutions)].join(" ")
                             });
                         }
                     }
