@@ -3,744 +3,606 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Metrix Breaker Check - LADOT Route Config QA Suite</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <title>LADOT KML Audit & Alignment Automation Panel</title>
     <style>
         :root {
-            --bg-main: #0f172a;
-            --bg-card: #1e293b;
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --accent-blue: #38bdf8;
+            --accent-green: #4ade80;
+            --accent-error: #f87171;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
-            --accent-primary: #3b82f6;
-            --accent-success: #10b981;
-            --accent-error: #ef4444;
-            --accent-warning: #f59e0b;
-            --accent-info: #06b6d4;
+            --border-color: #334155;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
             color: var(--text-main);
             margin: 0;
             padding: 20px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         header {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 24px;
+            color: var(--accent-blue);
+        }
+
+        header p {
+            margin: 5px 0 0 0;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .tabs {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #334155;
-            padding-bottom: 20px;
+            gap: 10px;
             margin-bottom: 20px;
         }
 
-        .header-title h1 {
-            margin: 0;
-            font-size: 24px;
-            letter-spacing: -0.5px;
-            text-transform: uppercase;
-            color: #e2e8f0;
+        .tab-btn {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            border-radius: 4px;
+            transition: all 0.2s ease;
         }
 
-        .header-title span {
+        .tab-btn.active {
+            background-color: var(--accent-blue);
+            color: var(--bg-color);
+            border-color: var(--accent-blue);
+        }
+
+        .tab-content {
+            display: none;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border-color);
+            padding: 30px;
+            text-align: center;
+            border-radius: 6px;
+            background-color: rgba(15, 23, 42, 0.4);
+            margin-bottom: 20px;
+            transition: border-color 0.2s;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent-blue);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background-color: var(--accent-blue);
+            color: var(--bg-color);
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-block;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-success {
+            background-color: var(--accent-green);
+        }
+
+        .issue-card {
+            background-color: rgba(248, 113, 113, 0.1);
+            border-left: 4px solid var(--accent-error);
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .issue-title {
+            font-weight: bold;
             color: var(--accent-error);
-            font-weight: 800;
+            margin-bottom: 4px;
         }
 
-        .header-meta {
+        .issue-rule {
             font-size: 12px;
             color: var(--text-muted);
-            text-align: right;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+        .success-box {
+            background-color: rgba(74, 222, 128, 0.1);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .summary-bar {
+            display: flex;
             gap: 20px;
             margin-bottom: 20px;
         }
 
-        @media (max-width: 1024px) {
-            .dashboard-grid { grid-template-columns: 1fr; }
-        }
-
-        .card {
-            background-color: var(--bg-card);
-            border-radius: 8px;
-            border: 1px solid #334155;
-            padding: 20px;
-            position: relative;
-            margin-bottom: 20px;
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #334155;
-            padding-bottom: 10px;
-        }
-
-        .upload-zone {
-            border: 2px dashed #475569;
-            border-radius: 6px;
-            padding: 25px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-bottom: 15px;
-        }
-
-        .upload-zone:hover {
-            border-color: var(--accent-primary);
-            background: #1e293b55;
-        }
-
-        #fileInput { display: none; }
-
-        .raw-text-area {
-            width: 100%;
-            height: 100px;
-            background: #0f172a;
-            border: 1px solid #334155;
-            border-radius: 6px;
-            color: #67e8f9;
-            font-family: monospace;
-            padding: 10px;
-            box-sizing: border-box;
-            resize: vertical;
-            font-size: 11px;
-        }
-
-        .action-button-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .btn-analyze {
-            background: var(--accent-primary);
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 4px;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 12px;
-            transition: background 0.15s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .btn-analyze:hover { background: #2563eb; }
-
-        .btn-download {
-            background: var(--accent-success);
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 4px;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 12px;
-            transition: background 0.15s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            opacity: 0.6;
-            pointer-events: none;
-        }
-
-        .btn-download.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .btn-download.active:hover { background: #059669; }
-
-        .metric-container {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .metric-box {
-            background: #0f172a;
+        .stat-card {
+            flex: 1;
+            background-color: rgba(15, 23, 42, 0.6);
             padding: 15px;
-            border-radius: 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
             text-align: center;
-            border: 1px solid #334155;
         }
 
-        .metric-box .value {
+        .stat-val {
             font-size: 24px;
-            font-weight: 700;
+            font-weight: bold;
+            color: var(--accent-blue);
         }
 
-        .metric-box .label {
-            font-size: 11px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            margin-top: 5px;
-        }
-
-        .error-log-container {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        .error-item {
-            background: #2d1a1e;
-            border-left: 4px solid var(--accent-error);
-            border-radius: 4px;
-            padding: 14px;
-            margin-bottom: 12px;
-        }
-
-        .error-item.warning-item {
-            background: #2e2516;
-            border-left: 4px solid var(--accent-warning);
-        }
-
-        .error-title {
-            font-weight: 600;
-            font-size: 14px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .error-desc {
-            font-size: 13px;
-            color: #cbd5e1;
-            margin: 6px 0;
-        }
-
-        .error-solution {
+        .stat-label {
             font-size: 12px;
-            color: var(--accent-success);
-            background: #0f172a;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-family: monospace;
-            margin-top: 8px;
-            border: 1px solid #1e293b;
+            color: var(--text-muted);
         }
 
-        .chart-wrapper {
-            height: 310px;
-            position: relative;
-        }
-
-        .status-badge {
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        .status-fail { background: #7f1d1d; color: #fca5a5; }
-        .status-pass { background: #064e3b; color: #6ee7b7; }
-
-        .guide-box {
-            background: #111e30;
-            border: 1px solid #1e3a8a;
+        #download-area {
+            text-align: center;
+            padding: 35px;
+            border: 1px solid var(--border-color);
+            background-color: rgba(15, 23, 42, 0.5);
             border-radius: 6px;
-            padding: 14px;
-            margin-top: 15px;
+            margin-top: 20px;
+        }
+
+        .fixed-log {
+            font-family: monospace;
+            background-color: #0f172a;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 250px;
+            overflow-y: auto;
+            text-align: left;
             font-size: 13px;
-        }
-        .guide-box title {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-weight: 600;
-            color: var(--accent-info);
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            font-size: 11px;
-            letter-spacing: 0.5px;
-        }
-        .guide-steps {
-            margin: 0;
-            padding-left: 20px;
             color: #cbd5e1;
-            line-height: 1.6;
+            border: 1px solid var(--border-color);
+            margin-top: 15px;
         }
-        .guide-steps li strong {
-            color: #e2e8f0;
+
+        .log-entry {
+            margin-bottom: 4px;
+            border-left: 2px solid var(--accent-blue);
+            padding-left: 8px;
         }
     </style>
 </head>
 <body>
 
+<div class="container">
     <header>
-        <div class="header-title">
-            <h1>Metrix Breaker <span>Check</span></h1>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">LADOT Lane-Line Engineering QA System</div>
-        </div>
-        <div class="header-meta">
-            <div>Specification Status: <strong>Authoritative (SSOT Ver. June 2026)</strong></div>
-            <div>Target Quality Threshold: <strong>100.0% Accuracy</strong></div>
-        </div>
+        <h1>LADOT KML Audit & Alignment Automation Panel</h1>
+        <p>Enforces strict LADOT standards: folder layouts, elimination of bike layers, structural alignment, and node sync to R0 (leaving typo text L0 intact)[cite: 5, 23, 34, 77].</p>
     </header>
 
-    <div class="dashboard-grid">
-        <div class="card">
-            <div class="card-header">
-                <i data-lucide="file-up" style="color: var(--accent-primary)"></i>
-                KML Ingestion Matrix
-            </div>
-            <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
-                <i data-lucide="upload-cloud" style="width: 32px; height: 32px; color: var(--text-muted);"></i>
-                <p style="margin: 5px 0 2px 0; font-weight: 500; font-size: 14px;">Upload route KML file</p>
-                <input type="file" id="fileInput" accept=".kml">
-            </div>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('audit-tab')">Audit Log & Flagged Issues</button>
+        <button class="tab-btn" onclick="switchTab('fix-tab')">Fix, Align Lanes & Download</button>
+    </div>
 
-            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Or Paste Raw KML text block below:</div>
-            <textarea id="rawKmlInput" class="raw-text-area" placeholder="Paste KML script markup here... <xml>..."></textarea>
-            
-            <div class="action-button-container">
-                <button class="btn-analyze" onclick="processRawText()">
-                    <i data-lucide="play" style="width:14px; height:14px;"></i> Analyze & Fix Data
-                </button>
-                <button id="downloadKmlBtn" class="btn-download" onclick="downloadGeneratedKML()">
-                    <i data-lucide="download" style="width:14px; height:14px;"></i> Download Validated KML
-                </button>
-            </div>
+    <div class="upload-zone">
+        <p id="file-status-text">Select or drop a KML annotation file to initiate the tracking sequence</p>
+        <label class="btn" for="kml-selector">Choose KML File</label>
+        <input type="file" id="kml-selector" accept=".kml" onchange="processUploadedKML(event)">
+    </div>
 
-            <div class="metric-container">
-                <div class="metric-box">
-                    <div id="m-blocks" class="value">—</div>
-                    <div class="label">Total Folders</div>
-                </div>
-                <div class="metric-box">
-                    <div id="m-errors" class="value" style="color: var(--accent-error)">—</div>
-                    <div class="label">Breaker Alerts</div>
-                </div>
-                <div class="metric-box">
-                    <div id="m-score" class="value" style="color: var(--accent-success)">—</div>
-                    <div class="label">Accuracy Index</div>
-                </div>
-            </div>
-
-            <div class="guide-box">
-                <title><i data-lucide="folder-tree" style="width:14px; height:14px;"></i> Structural Resolution Guide: Misarranged Folders</title>
-                <ol class="guide-steps">
-                    <li><strong>Identify structural breaks:</strong> Look down at the <em>Automated Rule Discrepancy Map</em> below to extract the exact Parent Context Path reporting a structure fail.</li>
-                    <li><strong>Automatic Length Standardization:</strong> If a <code>Priority Bus Stop</code> occurs, sibling lanes snap directly onto the measurement metrics of the primary feature. If no stop exists, standard <code>Bus Lane</code> and <code>Bike Lane</code> setups unify coordinate lengths instantly.</li>
-                    <li><strong>Re-align Sub-directories:</strong> Group all corresponding lane markings inside an explicitly defined child folder named exactly <code>LaneLines</code>, and place all compliance segments directly inside an <code>EnforceZones</code> child folder.</li>
-                </ol>
-            </div>
+    <div id="audit-tab" class="tab-content active">
+        <div class="summary-bar">
+            <div class="stat-card"><div class="stat-val" id="stat-blocks">0</div><div class="stat-label">Total Block Folders</div></div>
+            <div class="stat-card"><div class="stat-val" id="stat-lines">0</div><div class="stat-label">Total Lane Strings</div></div>
+            <div class="stat-card"><div class="stat-val" id="stat-issues" style="color: var(--accent-error);">0</div><div class="stat-label">Flagged Discrepancies</div></div>
         </div>
-
-        <div class="card">
-            <div class="card-header">
-                <i data-lucide="bar-chart-3" style="color: var(--accent-warning)"></i>
-                Metrix Graph Dashboard Discrepancy View
-            </div>
-            <div class="chart-wrapper">
-                <canvas id="metricsChart"></canvas>
-            </div>
+        <div id="issues-output">
+            <div style="text-align: center; color: var(--text-muted); padding: 40px;">No KML asset has been parsed yet. Upload data above.</div>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header" style="justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <i data-lucide="shield-alert" style="color: var(--accent-error)"></i>
-                Automated Rule Discrepancy Map & Solutions
-            </div>
-            <span id="passBadge" class="status-badge status-fail" style="display: none;">Awaiting Data</span>
-        </div>
-        <div class="error-log-container" id="errorLog">
-            <div style="text-align: center; color: var(--text-muted); padding: 40px 0;">
-                <i data-lucide="activity" style="width: 48px; height: 48px; margin-bottom: 10px; stroke-width: 1;"></i>
-                <p>Awaiting KML transmission data to execute QA parsing engine...</p>
-            </div>
+    <div id="fix-tab" class="tab-content">
+        <h3>Structural Modification & Alignment Routine</h3>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+            Executing this script automatically aligns all outward lane steps to exact start/end nodes matching R0 , drops unauthorized cycle layers , builds standardized sub-folders, and bypasses string alterations for L0 markers.
+        </p>
+        <button class="btn btn-success" id="execute-fix-btn" onclick="runKmlRepairSequence()" disabled>Execute Alignment & Restructuring</button>
+        
+        <div id="download-area" style="display: none;">
+            <span style="display: block; font-size: 18px; margin-bottom: 15px; color: var(--accent-green);">✓ Restructuring and Node Snap Complete!</span>
+            <a id="kml-download-link" class="btn" href="#" download="Fixed_LADOT_Annotation.kml">Download Rectified KML File</a>
+            <div class="fixed-log" id="modification-log"></div>
         </div>
     </div>
+</div>
 
-    <script>
-        lucide.createIcons();
-        let qaChart;
-        let currentXmlDoc = null; 
+<script>
+    // State storage for tracking parsed KML document details
+    let loadedKmlText = "";
+    let uploadedFileName = "annotation.kml";
+    let parsedDataTree = [];
+    let discoveredIssues = [];
 
-        function initChart(numbering = 0, formatting = 0, alignment = 0, baseline = 0) {
-            const ctx = document.getElementById('metricsChart').getContext('2d');
-            if (qaChart) qaChart.destroy();
-            qaChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Rule 2.1 Labels', 'Rule 5.0 Structure', 'Rule 2.3/2.4 Pathing', 'Rule 4.0 Baseline'],
-                    datasets: [{
-                        label: 'Error Volume Detected',
-                        data: [numbering, formatting, alignment, baseline],
-                        backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#a855f7'],
-                        borderWidth: 0,
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', stepSize: 1 } },
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.target.classList.add('active');
+    }
+
+    function processUploadedKML(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        uploadedFileName = file.name;
+        document.getElementById('file-status-text').innerText = `Active Document: ${file.name}`;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            loadedKmlText = e.target.result;
+            analyzeKmlContents(loadedKmlText);
+            document.getElementById('execute-fix-btn').disabled = false;
+        };
+        reader.readAsText(file);
+    }
+
+    // Client-side parser extracting block folders, placemarks, and coordinates
+    function analyzeKmlContents(kmlContent) {
+        discoveredIssues = [];
+        parsedDataTree = [];
+        
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(kmlContent, "text/xml");
+        
+        // Find Folder components that act as Mainline Blocks
+        const folders = xmlDoc.getElementsByTagName("Folder");
+        let blockFoldersFound = 0;
+        let totalLinesCount = 0;
+
+        for (let i = 0; i < folders.length; i++) {
+            const folder = folders[i];
+            const nameEl = folder.getElementsByTagName("name")[0];
+            const folderName = nameEl ? nameEl.textContent.trim() : "Unnamed Folder";
+
+            // Identify block folders (typically contain direction markers like #NB, #SB, #EB, #WB or specific street annotations)
+            if (folderName.includes("#") || folderName.includes("|") || folder.parentElement.tagName === "Document") {
+                blockFoldersFound++;
+                
+                let blockObj = {
+                    elementRef: folder,
+                    name: folderName,
+                    subFolders: {},
+                    lanePlacemarks: [],
+                    enforcePlacemarks: [],
+                    baselines: []
+                };
+
+                // Scan child items
+                const childFolders = folder.querySelectorAll(":scope > Folder");
+                for (let j = 0; j < childFolders.length; j++) {
+                    const cf = childFolders[j];
+                    const cfName = cf.getElementsByTagName("name")[0]?.textContent.trim() || "";
+                    blockObj.subFolders[cfName] = cf;
+                }
+
+                const placemarks = folder.getElementsByTagName("Placemark");
+                for (let p = 0; p < placemarks.length; p++) {
+                    const pm = placemarks[p];
+                    const pmName = pm.getElementsByTagName("name")[0]?.textContent.trim() || "";
+                    
+                    // Track geometry properties
+                    const hasLine = pm.getElementsByTagName("LineString").length > 0;
+                    const coordsText = pm.getElementsByTagName("coordinates")[0]?.textContent.trim() || "";
+                    
+                    let geoData = {
+                        name: pmName,
+                        element: pm,
+                        coordinatesText: coordsText,
+                        parsedCoordinates: parseCoordinatesString(coordsText)
+                    };
+
+                    if (pmName.toUpperCase() === "BASELINE") {
+                        blockObj.baselines.push(geoData);
+                    } else if (/^(R\d+|L0)$/i.test(pmName)) {
+                        blockObj.lanePlacemarks.push(geoData);
+                        totalLinesCount++;
+                    } else if (pmName.toLowerCase().includes("stop") || pmName.toLowerCase().includes("zone") || pmName.toUpperCase().includes("AB")) {
+                        blockObj.enforcePlacemarks.push(geoData);
                     }
                 }
-            });
+                parsedDataTree.push(blockObj);
+            }
         }
-        initChart(0, 0, 0, 0);
 
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(evt) { analyzeAndFixKML(evt.target.result); };
-            reader.readAsText(file);
+        // Evaluate rule parameters across gathered elements
+        evaluateLADOTRules(parsedDataTree);
+        
+        // Update dashboard values
+        document.getElementById('stat-blocks').innerText = blockFoldersFound;
+        document.getElementById('stat-lines').innerText = totalLinesCount;
+        document.getElementById('stat-issues').innerText = discoveredIssues.length;
+        
+        renderDiscrepanciesReport();
+    }
+
+    function parseCoordinatesString(str) {
+        if (!str) return [];
+        return str.split(/\s+/).map(coordStr => {
+            const parts = coordStr.split(',').map(Number);
+            return parts.length >= 2 ? { lng: parts[0], lat: parts[1], alt: parts[2] || 0 } : null;
+        }).filter(c => c !== null);
+    }
+
+    // Strict validation engine scanning parsed data configurations against LADOT specifications 
+    function evaluateLADOTRules(tree) {
+        tree.forEach(block => {
+            const folderNames = Object.keys(block.subFolders);
+            
+            // Rule 1: Check standard folder labeling 
+            if (folderNames.length > 0) {
+                if (!folderNames.includes("LaneLines") && !folderNames.includes("Lane Lines")) {
+                    discoveredIssues.push({
+                        block: block.name,
+                        rule: "Folder Structure standard (§5)",
+                        detail: "Missing standard container 'LaneLines'. Components found loose or misnamed."
+                    });
+                }
+                if (folderNames.includes("Lane Lines")) {
+                    discoveredIssues.push({
+                        block: block.name,
+                        rule: "Folder Naming schema (§5)",
+                        detail: "Subfolder labeled with space ('Lane Lines') instead of unified 'LaneLines'."
+                    });
+                }
+            }
+
+            // Rule 2: Search for unauthorized bike infrastructure layers 
+            folderNames.forEach(fn => {
+                if (fn.toLowerCase().includes("bike") || fn.toLowerCase().includes("cycle")) {
+                    discoveredIssues.push({
+                        block: block.name,
+                        rule: "LADOT Scope boundary (§1)",
+                        detail: `Contains layer '${fn}'. Cycle paths are out-of-scope for LADOT configurations.`
+                    });
+                }
+            });
+
+            // Rule 3: Detect line duplicates omitting L0 as typing error 
+            let counters = {};
+            block.lanePlacemarks.forEach(pm => {
+                counters[pm.name] = (counters[pm.name] || 0) + 1;
+            });
+            Object.keys(counters).forEach(key => {
+                if (counters[key] > 1 && key.toUpperCase() !== "L0") {
+                    discoveredIssues.push({
+                        block: block.name,
+                        rule: "Duplicate Line Restriction (§2.1)",
+                        detail: `Detected duplicate instances (${counters[key]}) of line layer '${key}'.`
+                    });
+                }
+            });
+
+            // Rule 4: Verify start/end coordinate node alignment relative to baseline curb anchors (R0 or preserved L0 typo text) 
+            const baseCurb = block.lanePlacemarks.find(p => p.name.toUpperCase() === "R0" || p.name.toUpperCase() === "L0");
+            if (baseCurb && baseCurb.parsedCoordinates.length > 1) {
+                const targetStart = baseCurb.parsedCoordinates[0];
+                const targetEnd = baseCurb.parsedCoordinates[baseCurb.parsedCoordinates.length - 1];
+
+                block.lanePlacemarks.forEach(line => {
+                    if (line.name !== baseCurb.name && line.parsedCoordinates.length > 1) {
+                        const lineStart = line.parsedCoordinates[0];
+                        const lineEnd = line.parsedCoordinates[line.parsedCoordinates.length - 1];
+                        
+                        // Check geographical delta mismatch
+                        const startDelta = Math.sqrt(Math.pow(lineStart.lat - targetStart.lat, 2) + Math.pow(lineStart.lng - targetStart.lng, 2));
+                        const endDelta = Math.sqrt(Math.pow(lineEnd.lat - targetEnd.lat, 2) + Math.pow(lineEnd.lng - targetEnd.lng, 2));
+                        
+                        if (startDelta > 0.0001 || endDelta > 0.0001) {
+                            discoveredIssues.push({
+                                block: block.name,
+                                rule: "Node Alignment Flushness (§2.3)",
+                                detail: `Lane line '${line.name}' breaks boundary flushness. Misaligned node ends found mid-block.`
+                            });
+                        }
+                    }
+                });
+            }
         });
+    }
 
-        function processRawText() {
-            const txt = document.getElementById('rawKmlInput').value;
-            if(!txt.trim()) return alert("Please input or paste KML text string first.");
-            analyzeAndFixKML(txt);
+    function renderDiscrepanciesReport() {
+        const out = document.getElementById("issues-output");
+        if (discoveredIssues.length === 0) {
+            out.innerHTML = `
+                <div class="success-box">
+                    ✓ All structures pass LADOT criteria. Layout conforms fully to data authoring standards.
+                </div>`;
+            return;
         }
 
-        function analyzeAndFixKML(xmlText) {
-            const parser = new DOMParser();
-            try {
-                currentXmlDoc = parser.parseFromString(xmlText, "text/xml");
-                if (currentXmlDoc.getElementsByTagName("parsererror").length > 0) {
-                    throw new Error("Invalid XML/KML Structure detected.");
+        let html = `<h3>Identified Anomalies (${discoveredIssues.length})</h3>`;
+        discoveredIssues.forEach(issue => {
+            html += `
+                <div class="issue-card">
+                    <div class="issue-title">[${issue.block}] ${issue.detail}</div>
+                    <div class="issue-rule">Rule Reference: ${issue.rule}</div>
+                </div>`;
+        });
+        out.innerHTML = html;
+    }
+
+    // Automation sequence executing corrections and restructuring directly to XML nodes
+    function runKmlRepairSequence() {
+        if (!loadedKmlText) return;
+
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(loadedKmlText, "text/xml");
+        const folders = xmlDoc.getElementsByTagName("Folder");
+        const logs = [];
+
+        // Track and fix blocks
+        for (let i = 0; i < folders.length; i++) {
+            const folder = folders[i];
+            const nameEl = folder.getElementsByTagName("name")[0];
+            const folderName = nameEl ? nameEl.textContent.trim() : "";
+
+            if (folderName.includes("#") || folderName.includes("|") || folder.parentElement.tagName === "Document") {
+                logs.push(`Processing Block Container: ${folderName}`);
+
+                // Step A: Restructure subfolders and remove cycle layers [cite: 5, 23, 77]
+                let laneLinesFolder = null;
+                let enforceZonesFolder = null;
+                
+                const childFolders = Array.from(folder.querySelectorAll(":scope > Folder"));
+                childFolders.forEach(cf => {
+                    const cfName = cf.getElementsByTagName("name")[0]?.textContent.trim() || "";
+                    if (cfName.replace(/\s+/g, '').toLowerCase() === "lanelines") {
+                        laneLinesFolder = cf;
+                        cf.getElementsByTagName("name")[0].textContent = "LaneLines"; // Normalize name 
+                    } else if (cfName.replace(/\s+/g, '').toLowerCase() === "enforcezones") {
+                        enforceZonesFolder = cf;
+                        cf.getElementsByTagName("name")[0].textContent = "EnforceZones"; // Normalize name 
+                    } else if (cfName.toLowerCase().includes("bike") || cfName.toLowerCase().includes("cycle")) {
+                        logs.push(`-> Dropped unauthorized layer container: '${cfName}' `);
+                        folder.removeChild(cf);
+                    }
+                });
+
+                // Generate missing standardized targets if absent 
+                if (!laneLinesFolder) {
+                    laneLinesFolder = xmlDoc.createElement("Folder");
+                    const n = xmlDoc.createElement("name");
+                    n.textContent = "LaneLines";
+                    laneLinesFolder.appendChild(n);
+                    folder.appendChild(laneLinesFolder);
+                    logs.push(`-> Constructed standard subfolder: 'LaneLines' `);
                 }
-            } catch(e) {
-                alert("KML Syntax Error: Could not read string structure.");
-                currentXmlDoc = null;
-                document.getElementById('downloadKmlBtn').classList.remove('active');
-                return;
-            }
-            
-            const folders = currentXmlDoc.getElementsByTagName("Folder");
-            let totalFolders = folders.length;
-            let errors = [];
-            
-            let counts = { numbering: 0, formatting: 0, alignment: 0, baseline: 0 };
+                if (!enforceZonesFolder) {
+                    enforceZonesFolder = xmlDoc.createElement("Folder");
+                    const n = xmlDoc.createElement("name");
+                    n.textContent = "EnforceZones";
+                    enforceZonesFolder.appendChild(n);
+                    folder.appendChild(enforceZonesFolder);
+                    logs.push(`-> Constructed standard subfolder: 'EnforceZones' `);
+                }
 
-            for (let i = 0; i < folders.length; i++) {
-                const folder = folders[i];
-                const folderName = folder.getElementsByTagName("name")[0]?.textContent?.trim() || "Unnamed Folder";
-                
-                const isBlockFolder = folderName.includes("|") || (!folder.parentNode || folder.parentNode.tagName !== "Folder");
-                
-                if (isBlockFolder) {
-                    const placemarks = folder.getElementsByTagName("Placemark");
-                    let subFolders = folder.getElementsByTagName("Folder");
+                // Step B: Sort elements into designated child targets [cite: 76, 77, 78, 79]
+                const placemarks = Array.from(folder.querySelectorAll(":scope > Placemark"));
+                let anchorCurbLine = null;
+                let activeLines = [];
+
+                placemarks.forEach(pm => {
+                    const pmName = pm.getElementsByTagName("name")[0]?.textContent.trim() || "";
                     
-                    let laneLinesFolder = null;
-                    let enforceZonesFolder = null;
-                    let baselineCount = 0;
-                    let lNamesList = [];
+                    if (pmName.toUpperCase() === "BASELINE") {
+                        // Ensure baseline stays parent-level [cite: 79]
+                        folder.insertBefore(pm, laneLinesFolder); 
+                    } else if (/^(R\d+|L0)$/i.test(pmName)) {
+                        laneLinesFolder.appendChild(pm); // Route into LaneLines [cite: 78]
+                        
+                        let lineObj = {
+                            name: pmName,
+                            element: pm,
+                            coordEl: pm.getElementsByTagName("coordinates")[0],
+                            parsed: parseCoordinatesString(pm.getElementsByTagName("coordinates")[0]?.textContent || "")
+                        };
+                        
+                        activeLines.push(lineObj);
+                        
+                        // Select primary anchor: R0 prioritized, falling back to L0 typing error if explicitly defined
+                        if (pmName.toUpperCase() === "R0" && !anchorCurbLine) {
+                            anchorCurbLine = lineObj;
+                        } else if (pmName.toUpperCase() === "L0" && (!anchorCurbLine || anchorCurbLine.name === "L0")) {
+                            anchorCurbLine = lineObj; // Preservation of typo text context
+                        }
+                    } else {
+                        enforceZonesFolder.appendChild(pm);
+                    }
+                });
+
+                // Step C: Execute structural coordinate end-node alignment to master curb path 
+                if (anchorCurbLine && anchorCurbLine.parsed.length > 1) {
+                    const masterStart = anchorCurbLine.parsed[0];
+                    const masterEnd = anchorCurbLine.parsed[anchorCurbLine.parsed.length - 1];
                     
-                    // Flags tracking special alignment rules requested
-                    let hasPriorityBusStop = false;
-                    let hasBusOrBikeLane = false;
-                    let blocksWithNoBusStop = true;
-
-                    // 1. Identify subfolder layout targets & functional block characteristics
-                    for(let sf=0; sf<subFolders.length; sf++) {
-                        const sfName = subFolders[sf].getElementsByTagName("name")[0]?.textContent?.trim();
-                        if (sfName === "LaneLines") laneLinesFolder = subFolders[sf];
-                        if (sfName === "EnforceZones") enforceZonesFolder = subFolders[sf];
-                        
-                        if (['lanes', 'lane lines', 'enforcement', 'enforce'].includes(sfName?.toLowerCase())) {
-                            counts.formatting++;
-                            errors.push({
-                                block: folderName,
-                                type: "Rule 5.0 Structure Failure",
-                                rule: `Sub-folder naming mismatch discovered: "${sfName}"`,
-                                solution: `Renamed folder directly to exactly "LaneLines" or "EnforceZones" for structure consolidation.`
-                            });
-                            // Auto-Fix Directory Structural Layout Names
-                            if(['lanes', 'lane lines'].includes(sfName?.toLowerCase())) {
-                                subFolders[sf].getElementsByTagName("name")[0].textContent = "LaneLines";
-                                laneLinesFolder = subFolders[sf];
-                            } else {
-                                subFolders[sf].getElementsByTagName("name")[0].textContent = "EnforceZones";
-                                enforceZonesFolder = subFolders[sf];
-                            }
-                        }
-                    }
-
-                    // Scan Placemark features for classification & configuration attributes
-                    for (let p = 0; p < placemarks.length; p++) {
-                        const pm = placemarks[p];
-                        const pmName = pm.getElementsByTagName("name")[0]?.textContent?.trim() || "";
-                        const pmTextLower = pmName.toLowerCase();
-
-                        if (pmTextLower.includes("priority bus stop") || pmTextLower.includes("priority stop")) {
-                            hasPriorityBusStop = true;
-                            blocksWithNoBusStop = false;
-                        }
-                        if (pmTextLower.includes("bus lane") || pmTextLower.includes("bike lane")) {
-                            hasBusOrBikeLane = true;
-                        }
-                    }
-
-                    // 2. Execute Geometry Optimization: Same measurements engine implementation
-                    let priorityCoordinatesString = null;
-                    let priorityPlacemarkRef = null;
-
-                    // If it is a Priority Bus stop block, locate target metric baseline
-                    if (hasPriorityBusStop) {
-                        for (let p = 0; p < placemarks.length; p++) {
-                            const pm = placemarks[p];
-                            const name = (pm.getElementsByTagName("name")[0]?.textContent || "").toLowerCase();
-                            if (name.includes("priority")) {
-                                priorityCoordinatesString = pm.getElementsByTagName("coordinates")[0]?.textContent?.trim();
-                                priorityPlacemarkRef = pm;
-                                break;
-                            }
-                        }
-                    } 
-                    // Alternate: grab layout baseline context if priority structural elements missing
-                    if (!priorityCoordinatesString && placemarks.length > 0) {
-                        for(let p=0; p<placemarks.length; p++) {
-                            const name = (placemarks[p].getElementsByTagName("name")[0]?.textContent || "").toLowerCase();
-                            if(name.startsWith("#") || name.includes("baseline") || name.includes("l0") || name.includes("bus")) {
-                                priorityCoordinatesString = placemarks[p].getElementsByTagName("coordinates")[0]?.textContent?.trim();
-                                priorityPlacemarkRef = placemarks[p];
-                                break;
-                            }
-                        }
-                    }
-
-                    // Align all variant lines to match standard uniform bounding box/measurements string format
-                    if (priorityCoordinatesString && ((hasPriorityBusStop) || (blocksWithNoBusStop && hasBusOrBikeLane))) {
-                        let dynamicFixApplied = false;
-                        for (let p = 0; p < placemarks.length; p++) {
-                            const pm = placemarks[p];
-                            if (pm === priorityPlacemarkRef) continue; 
+                    activeLines.forEach(line => {
+                        // Keep specific L0 name if parsed, do not replace label string
+                        if (line.name !== anchorCurbLine.name && line.parsed.length > 1) {
+                            line.parsed[0].lat = masterStart.lat;
+                            line.parsed[0].lng = masterStart.lng;
+                            line.parsed[0].alt = masterStart.alt;
                             
-                            const pmName = pm.getElementsByTagName("name")[0]?.textContent?.trim() || "";
-                            if (pmName.match(/^L[0-9]$/) || pmName.toLowerCase().includes("lane")) {
-                                const currentCoords = pm.getElementsByTagName("coordinates")[0]?.textContent?.trim();
-                                if (currentCoords !== priorityCoordinatesString) {
-                                    pm.getElementsByTagName("coordinates")[0].textContent = priorityCoordinatesString;
-                                    dynamicFixApplied = true;
-                                }
+                            line.parsed[line.parsed.length - 1].lat = masterEnd.lat;
+                            line.parsed[line.parsed.length - 1].lng = masterEnd.lng;
+                            line.parsed[line.parsed.length - 1].alt = masterEnd.alt;
+
+                            // Re-serialize points into coordinate tag blocks
+                            const serialText = line.parsed.map(p => `${p.lng},${p.lat},${p.alt}`).join("\n");
+                            if (line.coordEl) {
+                                line.coordEl.textContent = serialText;
                             }
+                            logs.push(`-> Synchronized boundary terminals for line '${line.name}' to match curb base anchor `);
                         }
-                        if (dynamicFixApplied) {
-                            counts.alignment++;
-                            let conditionText = hasPriorityBusStop ? "Priority Bus Stop Detected" : "Block with No Bus Stop (Standard Bus/Bike Arrangement)";
-                            errors.push({
-                                block: folderName,
-                                type: "Measurement Alignment Modification",
-                                rule: `Lanes with unequal measurement geometries discovered under context [${conditionText}].`,
-                                solution: "Aligned and synchronized all lane vectors inside this block segment to the identical spatial measurements metric."
-                            });
-                        }
-                    }
-
-                    // 3. Scan child placement components & missing structures
-                    for (let p = 0; p < placemarks.length; p++) {
-                        const pm = placemarks[p];
-                        const pmName = pm.getElementsByTagName("name")[0]?.textContent?.trim() || "";
-                        const isDirectChild = (pm.parentNode === folder);
-
-                        if (pmName.startsWith("#") || pmName.toLowerCase().includes("baseline")) {
-                            baselineCount++;
-                            
-                            if (!isDirectChild) {
-                                counts.baseline++;
-                                errors.push({
-                                    block: folderName,
-                                    type: "Rule 5.0 Baseline Misplacement",
-                                    rule: `Baseline "${pmName}" located inside an unapproved sub-folder matrix hierarchy.`,
-                                    solution: "Extracted baseline out of child layer and restored structural configuration context cleanly."
-                                });
-                                // Auto fix structural tree location
-                                folder.insertBefore(pm, folder.firstChild);
-                            }
-
-                            const coords = pm.getElementsByTagName("coordinates")[0]?.textContent?.trim() || "";
-                            if (!coords || coords.split(/\s+/).length <= 1) {
-                                counts.baseline++;
-                                errors.push({
-                                    block: folderName,
-                                    type: "Rule 4.2 String Discrepancy",
-                                    rule: `Baseline "${pmName}" is broken as a single point dot sequence.`,
-                                    solution: "Re-engineered target structure metrics smoothly into fully extended LineString paths."
-                                });
-                            }
-                        }
-
-                        if (pmName.match(/^L[0-9]$/)) {
-                            lNamesList.push({ name: pmName, pmNode: pm });
-                            
-                            if (folder.getElementsByTagName("name")[0]?.textContent?.trim() === folderName && pm.parentNode !== laneLinesFolder) {
-                                if(pm.parentNode && pm.parentNode.getElementsByTagName("name")[0]?.textContent?.trim() !== "LaneLines") {
-                                    counts.formatting++;
-                                    errors.push({
-                                        block: folderName,
-                                        type: "Rule 5.0 Component Displacement",
-                                        rule: `Lane line "${pmName}" sitting loose outside designated structured child folder layouts.`,
-                                        solution: `Migrated lane element safely into the nested child 'LaneLines' folder tree framework.`
-                                    });
-                                    // Automatic relocation fix rule
-                                    if(laneLinesFolder) {
-                                        laneLinesFolder.appendChild(pm);
-                                    } else {
-                                        let newLFolder = currentXmlDoc.createElement("Folder");
-                                        let newLName = currentXmlDoc.createElement("name");
-                                        newLName.textContent = "LaneLines";
-                                        newLFolder.appendChild(newLName);
-                                        folder.appendChild(newLFolder);
-                                        laneLinesFolder = newLFolder;
-                                        laneLinesFolder.appendChild(pm);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (baselineCount === 0) {
-                        counts.baseline++;
-                        errors.push({
-                            block: folderName,
-                            type: "Rule 5.0 Structural Omission",
-                            rule: "Exactly ONE baseline required per block framework. Detected count matrix reads: 0.",
-                            solution: "Created placeholder #FFFFFF absolute layout tracking path to preserve downstream configuration data."
-                        });
-                    } else if (baselineCount > 1) {
-                        counts.baseline++;
-                        errors.push({
-                            block: folderName,
-                            type: "Rule 5.0 Cardinality Violation",
-                            rule: `Multiple redundant baselines found inside block directory paths. Detected: ${baselineCount}.`,
-                            solution: "Consolidated structural duplicates into single operational orientation nodes."
-                        });
-                    }
-
-                    // Rule 2.1 Compressed Lane Sequencing Implementation
-                    if (lNamesList.length > 0) {
-                        let lCountsMap = {};
-                        let lIndexes = [];
-                        let laneFolderErrors = [];
-                        let laneFolderSolutions = [];
-                        
-                        lNamesList.forEach(item => {
-                            lCountsMap[item.name] = (lCountsMap[item.name] || 0) + 1;
-                            const idx = parseInt(item.name.replace('L', ''), 10);
-                            if(!lIndexes.includes(idx)) lIndexes.push(idx);
-                        });
-
-                        lIndexes.sort((a,b) => a-b);
-
-                        for (const lKey in lCountsMap) {
-                            if (lCountsMap[lKey] > 1) {
-                                counts.numbering++;
-                                laneFolderErrors.push(`Duplicate descriptor configurations for "${lKey}" (Detected Count: ${lCountsMap[lKey]})`);
-                                laneFolderSolutions.push(`Adjust sequencing outwards from inside curb layout rules.`);
-                            }
-                        }
-
-                        if (lCountsMap['L0'] > 1) {
-                            counts.numbering++;
-                            laneFolderErrors.push("Outermost boundary lane vector mistakenly tagged as L0 inside layer.");
-                            laneFolderSolutions.push("Remap configuration indices to match highest target outer integers.");
-                        }
-
-                        if (lIndexes.length > 0 && (lIndexes[lIndexes.length - 1] !== lIndexes.length - 1 || lIndexes[0] !== 0)) {
-                            counts.numbering++;
-                            laneFolderErrors.push(`Sequence gaps found within continuous indices list: [L${lIndexes.join(', L')}].`);
-                            laneFolderSolutions.push("Re-index items seamlessly from the starting boundary line framework.");
-                        }
-
-                        if (laneFolderErrors.length > 0) {
-                            errors.push({
-                                block: folderName,
-                                type: "Rule 2.1 Label Sequencing Malfunction",
-                                rule: laneFolderErrors.join(" ✖ "),
-                                solution: [...new Set(laneFolderSolutions)].join(" ")
-                            });
-                        }
-                    }
+                    });
                 }
             }
-
-            let errorCount = errors.length;
-            const absoluteAccuracy = errorCount === 0 ? "100.0%" : Math.max(0, ((1 - (errorCount / (totalFolders * 3 + 1))) * 100)).toFixed(1) + "%";
-            
-            document.getElementById('m-blocks').textContent = totalFolders;
-            document.getElementById('m-errors').textContent = errorCount;
-            document.getElementById('m-score').textContent = absoluteAccuracy;
-            
-            const badge = document.getElementById('passBadge');
-            badge.style.display = "inline-block";
-            badge.className = errorCount === 0 ? "status-badge status-pass" : "status-badge status-fail";
-            badge.textContent = errorCount === 0 ? "100% ALIGNED" : "AUTO-FIXES APPLIED";
-
-            initChart(counts.numbering, counts.formatting, counts.alignment, counts.baseline);
-            const logContainer = document.getElementById('errorLog');
-            logContainer.innerHTML = "";
-
-            document.getElementById('downloadKmlBtn').classList.add('active');
-
-            if (errorCount === 0) {
-                logContainer.innerHTML = `
-                    <div style="text-align: center; color: var(--accent-success); padding: 40px 0;">
-                        <i data-lucide="check-circle" style="width: 48px; height: 48px; margin-bottom: 10px;"></i>
-                        <p style="font-weight: 600;">Validation Passed! KML transmission matches 100.0% LADOT Engineering Specifications.</p>
-                    </div>
-                `;
-                lucide.createIcons();
-                return;
-            }
-
-            errors.forEach(err => {
-                const item = document.createElement('div');
-                item.className = "error-item warning-item";
-                item.innerHTML = `
-                    <div class="error-title">
-                        <span><strong>Context Path:</strong> ${err.block}</span>
-                        <span style="color:var(--accent-warning); font-size:11px;">[${err.type}]</span>
-                    </div>
-                    <div class="error-desc"><strong>Rule Metric Discrepancy:</strong> ${err.rule}</div>
-                    <div class="error-solution">🛠️ <strong>Automated Resolution:</strong> ${err.solution}</div>
-                `;
-                logContainer.appendChild(item);
-            });
-            lucide.createIcons();
         }
 
-        function downloadGeneratedKML() {
-            if (!currentXmlDoc) return alert("No parsed or generated KML stream available. Please execute an analysis first.");
-            
-            const serializer = new XMLSerializer();
-            const xmlString = serializer.serializeToString(currentXmlDoc);
-            
-            const blob = new Blob([xmlString], { type: "application/vnd.google-earth.kml+xml;charset=utf-8" });
-            const link = document.createElement("a");
-            
-            link.href = URL.createObjectURL(blob);
-            link.download = "LADOT_Aligned_RouteConfig.kml";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-    </script>
+        // Export generated file output via browser download interface
+        const serializer = new XMLSerializer();
+        const revisedKmlText = serializer.serializeToString(xmlDoc);
+        const blob = new Blob([revisedKmlText], { type: "application/vnd.google-earth.kml+xml" });
+        const downloadUrl = URL.createObjectURL(blob);
+        
+        const linkEl = document.getElementById('kml-download-link');
+        linkEl.href = downloadUrl;
+        linkEl.download = uploadedFileName.startsWith("Fixed_") ? uploadedFileName : `Fixed_${uploadedFileName}`;
+        
+        // Render step diagnostics logs
+        document.getElementById('download-area').style.display = 'block';
+        const logContainer = document.getElementById('modification-log');
+        logContainer.innerHTML = '<h4>Execution Logs:</h4>' + logs.map(l => `<div class="log-entry">${l}</div>`).join('');
+        
+        // Re-run visual interface parser to evaluate compliance updates
+        analyzeKmlContents(revisedKmlText);
+    }
+</script>
+
 </body>
 </html>
