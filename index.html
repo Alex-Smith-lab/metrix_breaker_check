@@ -241,7 +241,7 @@
             <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">LADOT Lane-Line Engineering QA System</div>
         </div>
         <div class="header-meta">
-            <div>Specification Status: <strong>Authoritative (LO Rule Update - June 2026)</strong></div>
+            <div>Specification Status: <strong>Authoritative (LO Update June 2026)</strong></div>
             <div>Target Quality Threshold: <strong>100.0% Accuracy</strong></div>
         </div>
     </header>
@@ -295,7 +295,7 @@
             Automated Alignment Engine & Engineering Corrections
         </div>
         <p style="font-size: 13px; color: var(--text-muted); margin-top: 0;">
-            Detected structural faults can be automatically resolved. This function remaps sequencing tokens from <strong>RO to LO</strong>, fixes misarranged or non-compliant subfolders, and re-groups standalone elements.
+            Detected configuration faults can be systematically resolved. This automation routine maps layout parameters from <strong>RO to LO</strong>, dynamically resolves misarranged folder titles, and organizes loose lane tracks.
         </p>
         <button class="btn-fix" onclick="executeAutoFix()">
             <i data-lucide="wrench" style="width: 16px; height: 16px;"></i>
@@ -447,7 +447,7 @@
                             }
                         }
 
-                        // Updated for rule change requirement: Check for legacy R-tokens or target L-tokens
+                        // LO Rule update tracking evaluation
                         if (pmName.match(/^[RL][0-9]$/)) {
                             lNamesList.push({ name: pmName, pmNode: pm });
                             
@@ -490,7 +490,6 @@
                         let laneFolderSolutions = [];
                         
                         lNamesList.forEach(item => {
-                            // Standardize tracking token string variant for local sequencing validation
                             let standardizedKey = item.name.replace('R', 'L');
                             lCountsMap[standardizedKey] = (lCountsMap[standardizedKey] || 0) + 1;
                             const idx = parseInt(standardizedKey.replace('L', ''), 10);
@@ -568,7 +567,7 @@
             lucide.createIcons();
         }
 
-        // Programmatic Parsing Engine to Automatically Sort Folders and Align Names to LO
+        // Autoalignment Engine to rewrite token arrays and sort structured subfolder components
         function executeAutoFix() {
             if (!activeKmlString.trim()) {
                 alert("Please inject or upload KML text script architecture first.");
@@ -586,30 +585,26 @@
 
             const folders = xmlDoc.getElementsByTagName("Folder");
             
-            // Loop over top-level container blocks
             for (let i = 0; i < folders.length; i++) {
                 const folder = folders[i];
                 const folderName = folder.getElementsByTagName("name")[0]?.textContent?.trim() || "";
                 const isBlockFolder = folderName.includes("|") || (!folder.parentNode || folder.parentNode.tagName !== "Folder");
 
                 if (isBlockFolder) {
-                    // 1. Structural Folder Fixer and Ingestion Alignment
                     let subFolders = Array.from(folder.childNodes).filter(n => n.tagName === "Folder");
                     let laneLinesFolder = subFolders.find(sf => sf.getElementsByTagName("name")[0]?.textContent?.trim() === "LaneLines");
                     
-                    // If no explicit subfolder found, search for misarranged names
                     if (!laneLinesFolder) {
                         for (let sf = 0; sf < subFolders.length; sf++) {
                             let currentSfName = subFolders[sf].getElementsByTagName("name")[0]?.textContent?.trim()?.toLowerCase();
                             if (['lanes', 'lane lines', 'lanelines'].includes(currentSfName)) {
                                 laneLinesFolder = subFolders[sf];
-                                laneLinesFolder.getElementsByTagName("name")[0].textContent = "LaneLines"; // Automatic rename update
+                                laneLinesFolder.getElementsByTagName("name")[0].textContent = "LaneLines";
                                 break;
                             }
                         }
                     }
 
-                    // Create folder dynamically if it is completely missing
                     if (!laneLinesFolder) {
                         laneLinesFolder = xmlDoc.createElement("Folder");
                         let fName = xmlDoc.createElement("name");
@@ -618,7 +613,6 @@
                         folder.appendChild(laneLinesFolder);
                     }
 
-                    // 2. Placemark Vector Re-alignment and Rule Token Update (RO -> LO)
                     let placemarks = Array.from(folder.getElementsByTagName("Placemark"));
                     
                     placemarks.forEach(pm => {
@@ -626,20 +620,20 @@
                         if (pmNameNode) {
                             let txt = pmNameNode.textContent.trim();
                             
-                            // Convert old structural layout label variations to LO format rules
+                            // Transform configuration parameters to LO rules
                             if (txt.match(/^R[0-9]$/)) {
                                 txt = "L" + txt.slice(1);
                                 pmNameNode.textContent = txt;
                             }
 
-                            // If it's an approved lane asset (L0, L1...), confirm sorting placement inside correct folder child network
+                            // Route matching elements inside targeted folder container hierarchy
                             if (txt.match(/^L[0-9]$/)) {
                                 if (pm.parentNode !== laneLinesFolder) {
-                                    laneLinesFolder.appendChild(pm); // Re-align loose vectors into LaneLines container
+                                    laneLinesFolder.appendChild(pm);
                                 }
                             }
 
-                            // If baseline is sitting down inside sub-nodes, pull it up to main block context parent
+                            // Structure loose baselines back to root folder parent blocks
                             if ((txt.startsWith("#") || txt.toLowerCase().includes("baseline")) && pm.parentNode !== folder) {
                                 folder.insertBefore(pm, laneLinesFolder);
                             }
@@ -648,14 +642,12 @@
                 }
             }
 
-            // Serialize updated node document back to text output string layout
             const serializer = new XMLSerializer();
             const optimizedKml = serializer.serializeToString(xmlDoc);
             
             document.getElementById('fixedKmlOutput').value = optimizedKml;
             document.getElementById('fixedOutputContainer').style.display = "block";
             
-            // Re-run original evaluation matrix logic against fixed data string to display clean metrics
             analyzeKML(optimizedKml);
         }
 
