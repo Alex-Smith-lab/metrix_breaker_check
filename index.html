@@ -264,7 +264,7 @@
                         csvRecordsDataset = res.data;
                         document.getElementById('tel-csv-rows').innerText = csvRecordsDataset.length;
                         
-                        // Unlock operational threshold
+                        // Unlock structural capabilities thresholds
                         auditBtn.removeAttribute('disabled');
                         auditBtn.className = "w-full mt-4 bg-[#ff3333] hover:bg-[#cc0000] text-black font-bold uppercase tracking-wider text-xs py-2.5 rounded transition shadow-lg cursor-pointer";
                         
@@ -285,17 +285,33 @@
                     rawKmlDataTextString = evt.target.result;
                     try {
                         const options = { ignoreAttributes: false, attributeNamePrefix: "@_" };
-                        const parser = new fxparser.XMLParser(options);
-                        parsedKmlDataObjectTree = parser.parse(rawKmlDataTextString);
+                        
+                        // Fail-Safe Auto-Detection Wrapper for Universal CDN Instantiation 
+                        let parserInstance;
+                        if (typeof fxparser !== 'undefined' && fxparser.XMLParser) {
+                            parserInstance = new fxparser.XMLParser(options);
+                        } else if (typeof XMLParser !== 'undefined') {
+                            parserInstance = new XMLParser(options);
+                        } else {
+                            throw new Error("Fast XML Parser CDN class definitions missing from target browser memory space.");
+                        }
+
+                        parsedKmlDataObjectTree = parserInstance.parse(rawKmlDataTextString);
                         
                         let fc = 0;
+                        // Structural boundary normalization checks
                         if(parsedKmlDataObjectTree?.kml?.Document?.Folder) {
                             const fold = parsedKmlDataObjectTree.kml.Document.Folder;
+                            fc = Array.isArray(fold) ? fold.length : 1;
+                        } else if (parsedKmlDataObjectTree?.kml?.Folder) {
+                            const fold = parsedKmlDataObjectTree.kml.Folder;
                             fc = Array.isArray(fold) ? fold.length : 1;
                         }
                         document.getElementById('tel-kml-folders').innerText = fc;
                     } catch(err) {
-                        alert("KML XML Telemetry Extraction Error: " + err.message);
+                        document.getElementById('lbl-kml-name').innerText = "Parsing Error Handled";
+                        document.getElementById('lbl-kml-name').className = "block text-[10px] text-[#ff3333] font-bold mt-1 font-mono";
+                        alert("KML XML Telemetry Extraction Error: " + err.message + "\n\nVerify that the loaded KML text sequence contains valid closing tags.");
                     }
                 };
                 r.readAsText(file);
@@ -322,8 +338,10 @@
             });
 
             const kmlFoldersArray = [];
-            if(parsedKmlDataObjectTree?.kml?.Document?.Folder) {
-                const f = parsedKmlDataObjectTree.kml.Document.Folder;
+            // Handle variations in KML document structures dynamically
+            const rootDocument = parsedKmlDataObjectTree?.kml?.Document || parsedKmlDataObjectTree?.kml;
+            if(rootDocument && rootDocument.Folder) {
+                const f = rootDocument.Folder;
                 if (Array.isArray(f)) kmlFoldersArray.push(...f); else kmlFoldersArray.push(f);
             }
 
@@ -337,8 +355,8 @@
                 
                 // Find matching CSV line item rows metrics variables references
                 const matchingCSVRow = csvRecordsDataset.find(r => (r["LOCATION DESCRIPTION"] || r["LOCATION NAME"] || "").trim() === folderName);
-                const bLat = matchingCSVRow ? parseFloat(matchingCSVRow["LAT"]) || -34.0 : 50.8;
-                const bLong = matchingCSVRow ? parseFloat(matchingCSVRow["LONG"]) || 0.1 : -0.1;
+                const bLat = matchingCSVRow ? parseFloat(matchingCSVRow["LAT"]) || 50.84 : 50.84;
+                const bLong = matchingCSVRow ? parseFloat(matchingCSVRow["LONG"]) || -0.11 : -0.11;
 
                 mapSpatialNodeCoordinatesRegistry.push({ name: folderName, x: canvasX, y: canvasY, lat: bLat, long: bLong });
 
@@ -506,14 +524,6 @@
                 const hasMistake = validatedErrorsCacheList.some(e => e.block === node.name);
                 const markColor = hasMistake ? "#ff3333" : "#00ff88";
 
-                // SVG Base Lane Tracks Simulation Layers Mock Graphics
-                const lane0 = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                lane0.setAttribute("x1", node.x - 25); lane0.setAttribute("y1", node.x + 5);
-                lane0.setAttribute("x2", node.x + 25); lane0.setAttribute("y2", node.x + 5);
-                lane0.setAttribute("stroke", "#00ff88");
-                lane0.setAttribute("stroke-width", "1.5");
-                svg.appendChild(lane0);
-
                 // Setup spatial absolute markers overlays tracking div container loops
                 const divMarker = document.createElement('div');
                 divMarker.className = "absolute cursor-pointer pointer-events-auto transform -translate-x-1/2 -translate-y-1/2";
@@ -571,16 +581,15 @@
 
             csvRecordsDataset.forEach(row => {
                 const blockTitle = (row["LOCATION DESCRIPTION"] || row["LOCATION NAME"] || "Compiled Route Block Segment").trim();
-                const bLat = row["LAT"] || "0.000000";
-                const bLong = row["LONG"] || "0.000000";
+                const bLat = row["LAT"] || "50.84677364";
+                const bLong = row["LONG"] || "-0.115097037";
 
                 compiledXMLString += `    <Folder>\n      <name>${blockTitle}</name>\n`;
                 compiledXMLString += `      <Folder>\n        <name>Baseline</name>\n        <Placemark>\n          <name>Curb_Baseline_Track</name>\n          <LineString>\n            <coordinates>${bLong},${bLat},0</coordinates>\n          </LineString>\n        </Placemark>\n      </Folder>\n`;
                 compiledXMLString += `      <Folder>\n        <name>LaneLines</name>\n`;
                 compiledXMLString += `        <Placemark>\n          <name>L0</name>\n          <LineString><coordinates>${bLong},${bLat},0</coordinates></LineString>\n        </Placemark>\n`;
                 compiledXMLString += `        <Placemark>\n          <name>L1</name>\n          <LineString><coordinates>${bLong},${bLat},0</coordinates></LineString>\n        </Placemark>\n`;
-                compiledXMLString += `      </Folder>\n`;
-                compiledXMLString += `    </Folder>\n`;
+                compiledXMLString += `      </Folder>\n    </Folder>\n`;
             });
 
             compiledXMLString += `  </Document>\n</kml>`;
@@ -593,7 +602,7 @@
             temporaryAnchorElement.click();
             document.body.removeChild(temporaryAnchorElement);
             
-            alert(`Master Configuration compiled successfully: ${csvRecordsDataset.length} rows transformed into KML block structures containing valid folder paths under the new L0 standard layout framework.`);
+            alert(`Master Configuration compiled successfully: ${csvRecordsDataset.length} rows transformed into KML block structures.`);
         }
     </script>
 </body>
